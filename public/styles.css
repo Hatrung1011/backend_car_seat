@@ -1171,6 +1171,24 @@ textarea {
   animation: fadeIn 0.2s ease;
 }
 
+/* Toggle Checkbox */
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.toggle-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
 /* Logout Button */
 .logout-btn {
   width: 34px;

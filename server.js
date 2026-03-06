@@ -6,6 +6,8 @@ import { fileURLToPath } from 'url';
 import { authMiddleware } from './middleware/auth.js';
 import authRoutes from './routes/auth.js';
 import productRoutes from './routes/products.js';
+import brandRoutes from './routes/brands.js';
+import categoryRoutes from './routes/categories.js';
 
 dotenv.config();
 
@@ -29,6 +31,8 @@ app.use(authMiddleware);
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
+app.use('/api/brands', brandRoutes);
+app.use('/api/categories', categoryRoutes);
 
 // Serve admin page for all non-API routes
 app.get('*', (req, res) => {
