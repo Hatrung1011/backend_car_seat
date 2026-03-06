@@ -1,3 +1,58 @@
+// ===== Auth =====
+function getToken() {
+    return localStorage.getItem('admin_token');
+}
+
+function authHeaders() {
+    const token = getToken();
+    return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+function handleAuthError(res) {
+    if (res.status === 401) {
+        localStorage.removeItem('admin_token');
+        localStorage.removeItem('admin_refresh_token');
+        localStorage.removeItem('admin_user');
+        window.location.href = '/login.html';
+        return true;
+    }
+    return false;
+}
+
+function logout() {
+    localStorage.removeItem('admin_token');
+    localStorage.removeItem('admin_refresh_token');
+    localStorage.removeItem('admin_user');
+    window.location.href = '/login.html';
+}
+
+// Check auth on page load
+(async function checkAuth() {
+    const token = getToken();
+    if (!token) {
+        window.location.href = '/login.html';
+        return;
+    }
+    try {
+        const res = await fetch('/api/auth/me', {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) {
+            window.location.href = '/login.html';
+            return;
+        }
+        // Update user display
+        const json = await res.json();
+        if (json.success) {
+            const nameEl = document.querySelector('.user-name');
+            const emailParts = json.data.email.split('@');
+            if (nameEl) nameEl.textContent = emailParts[0];
+        }
+    } catch (_) {
+        window.location.href = '/login.html';
+    }
+})();
+
 // ===== State =====
 const API_URL = '/api/products';
 let allProducts = [];
@@ -119,7 +174,8 @@ function setupEventListeners() {
 async function loadProducts() {
     try {
         showLoading(true);
-        const res = await fetch(API_URL);
+        const res = await fetch(API_URL, { headers: authHeaders() });
+        if (handleAuthError(res)) return;
         const json = await res.json();
 
         if (json.success) {
@@ -139,23 +195,29 @@ async function loadProducts() {
 async function createProduct(data) {
     const res = await fetch(API_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify(data),
     });
+    if (handleAuthError(res)) return { success: false };
     return res.json();
 }
 
 async function updateProduct(id, data) {
     const res = await fetch(`${API_URL}/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify(data),
     });
+    if (handleAuthError(res)) return { success: false };
     return res.json();
 }
 
 async function deleteProduct(id) {
-    const res = await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+    const res = await fetch(`${API_URL}/${id}`, {
+        method: 'DELETE',
+        headers: authHeaders(),
+    });
+    if (handleAuthError(res)) return { success: false };
     return res.json();
 }
 
@@ -567,3 +629,4 @@ function categoryLabel(cat) {
 window.editProduct = editProduct;
 window.confirmDelete = confirmDelete;
 window.removeItem = removeItem;
+window.logout = logout;

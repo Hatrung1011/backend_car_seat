@@ -4,6 +4,8 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import productRoutes from './routes/products.js';
+import authRoutes from './routes/auth.js';
+import { requireAuth } from './middleware/auth.js';
 
 dotenv.config();
 
@@ -22,7 +24,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // API Routes
-app.use('/api/products', productRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/products', requireAuth, productRoutes);
 
 // Serve admin page for all non-API routes
 app.get('*', (req, res) => {
