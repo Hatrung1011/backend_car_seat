@@ -540,10 +540,11 @@ async function handleDelete() {
             json = await deleteProductApi(deletingId);
         }
         if (json.success) {
+            const type = deletingType;
             showToast('Đã xóa thành công!', 'success');
             closeDeleteModal();
-            if (deletingType === 'brand') loadBrands();
-            else if (deletingType === 'category') loadCategories();
+            if (type === 'brand') loadBrands();
+            else if (type === 'category') loadCategories();
             else loadProducts();
         } else showToast('Lỗi: ' + json.error, 'error');
     } catch (err) { showToast('Lỗi: ' + err.message, 'error'); }
