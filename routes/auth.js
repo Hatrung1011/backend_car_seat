@@ -8,9 +8,9 @@ const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'nhat-ha-cms-secret-key-change-in-production';
 
 // Default admin credentials (override via env vars)
-const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
-const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || null;
-const ADMIN_PASSWORD_PLAIN = process.env.ADMIN_PASSWORD || 'nhathastore2024';
+const ADMIN_USERNAME = (process.env.ADMIN_USERNAME || 'admin').trim();
+const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH ? process.env.ADMIN_PASSWORD_HASH.trim() : null;
+const ADMIN_PASSWORD_PLAIN = (process.env.ADMIN_PASSWORD || 'nhathastore2024').trim();
 
 // POST /api/auth/login
 router.post('/login', async (req, res) => {
@@ -24,8 +24,11 @@ router.post('/login', async (req, res) => {
             });
         }
 
+        const inputUsername = username.trim();
+        const inputPassword = password.trim();
+
         // Check username
-        if (username !== ADMIN_USERNAME) {
+        if (inputUsername !== ADMIN_USERNAME) {
             return res.status(401).json({
                 success: false,
                 error: 'Tên đăng nhập hoặc mật khẩu không đúng',
@@ -35,9 +38,9 @@ router.post('/login', async (req, res) => {
         // Check password — use hash if available, otherwise plain text
         let passwordValid = false;
         if (ADMIN_PASSWORD_HASH) {
-            passwordValid = await bcrypt.compare(password, ADMIN_PASSWORD_HASH);
+            passwordValid = await bcrypt.compare(inputPassword, ADMIN_PASSWORD_HASH);
         } else {
-            passwordValid = password === ADMIN_PASSWORD_PLAIN;
+            passwordValid = inputPassword === ADMIN_PASSWORD_PLAIN;
         }
 
         if (!passwordValid) {
