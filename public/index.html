@@ -14,6 +14,53 @@
 </head>
 
 <body>
+  <!-- Login Screen -->
+  <div class="login-screen" id="login-screen">
+    <div class="login-container">
+      <div class="login-card">
+        <div class="login-header">
+          <div class="login-brand">
+            <div class="brand-icon">NH</div>
+            <div>
+              <h1>Nhật Hạ Store</h1>
+              <span>Hệ thống quản trị</span>
+            </div>
+          </div>
+        </div>
+        <form id="login-form" class="login-form">
+          <div class="form-group">
+            <label for="login-username">Tên đăng nhập</label>
+            <div class="input-icon-wrap">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
+              <input type="text" id="login-username" required placeholder="Nhập tên đăng nhập" autocomplete="username">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="login-password">Mật khẩu</label>
+            <div class="input-icon-wrap">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+              <input type="password" id="login-password" required placeholder="Nhập mật khẩu"
+                autocomplete="current-password">
+            </div>
+          </div>
+          <div class="login-error" id="login-error" style="display:none;"></div>
+          <button type="submit" class="btn btn-primary login-btn" id="login-submit">
+            <span class="btn-text">Đăng nhập</span>
+            <div class="btn-spinner" style="display:none;">
+              <div class="spinner small"></div>
+            </div>
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <!-- Sidebar -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-brand">
@@ -47,11 +94,10 @@
       <div class="user-info">
         <div class="user-avatar">A</div>
         <div class="user-details">
-          <span class="user-name">Admin</span>
+          <span class="user-name" id="sidebar-username">Admin</span>
           <span class="user-role">Quản trị viên</span>
         </div>
-        <button class="action-btn" onclick="logout()" title="Đăng xuất"
-          style="margin-left:auto; color: var(--text-muted);">
+        <button class="logout-btn" id="btn-logout" title="Đăng xuất">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
             <polyline points="16 17 21 12 16 7" />

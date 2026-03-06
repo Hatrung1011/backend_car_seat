@@ -1,57 +1,5 @@
-// ===== Auth =====
-function getToken() {
-    return localStorage.getItem('admin_token');
-}
-
-function authHeaders() {
-    const token = getToken();
-    return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
-function handleAuthError(res) {
-    if (res.status === 401) {
-        localStorage.removeItem('admin_token');
-        localStorage.removeItem('admin_refresh_token');
-        localStorage.removeItem('admin_user');
-        window.location.href = '/login.html';
-        return true;
-    }
-    return false;
-}
-
-function logout() {
-    localStorage.removeItem('admin_token');
-    localStorage.removeItem('admin_refresh_token');
-    localStorage.removeItem('admin_user');
-    window.location.href = '/login.html';
-}
-
-// Check auth on page load
-(async function checkAuth() {
-    const token = getToken();
-    if (!token) {
-        window.location.href = '/login.html';
-        return;
-    }
-    try {
-        const res = await fetch('/api/auth/me', {
-            headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok) {
-            window.location.href = '/login.html';
-            return;
-        }
-        // Update user display
-        const json = await res.json();
-        if (json.success) {
-            const nameEl = document.querySelector('.user-name');
-            const emailParts = json.data.email.split('@');
-            if (nameEl) nameEl.textContent = emailParts[0];
-        }
-    } catch (_) {
-        window.location.href = '/login.html';
-    }
-})();
+// ===== Auth State =====
+let authToken = localStorage.getItem('cms_token') || null;
 
 // ===== State =====
 const API_URL = '/api/products';
@@ -64,6 +12,10 @@ let deletingId = null;
 // ===== DOM Elements =====
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => document.querySelectorAll(s);
+
+const loginScreen = $('#login-screen');
+const loginForm = $('#login-form');
+const loginError = $('#login-error');
 
 const productsTbody = $('#products-tbody');
 const tableLoading = $('#table-loading');
@@ -83,12 +35,116 @@ const modalTitle = $('#modal-title');
 
 // ===== Init =====
 document.addEventListener('DOMContentLoaded', () => {
-    loadProducts();
+    checkAuth();
     setupEventListeners();
 });
 
+// ===== Auth =====
+async function checkAuth() {
+    if (!authToken) {
+        showLogin();
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/auth/check', {
+            headers: { Authorization: `Bearer ${authToken}` },
+        });
+        const json = await res.json();
+
+        if (json.success && json.authenticated) {
+            showDashboard(json.user);
+        } else {
+            logout();
+        }
+    } catch {
+        // If server unreachable, still try to show dashboard
+        showDashboard({ username: 'Admin' });
+    }
+}
+
+function showLogin() {
+    loginScreen.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+}
+
+function showDashboard(user) {
+    loginScreen.classList.add('hidden');
+    document.body.style.overflow = '';
+
+    // Update sidebar username
+    const sidebarUser = $('#sidebar-username');
+    if (sidebarUser && user) {
+        sidebarUser.textContent = user.username || 'Admin';
+    }
+
+    loadProducts();
+}
+
+async function handleLogin(e) {
+    e.preventDefault();
+
+    const username = $('#login-username').value.trim();
+    const password = $('#login-password').value;
+
+    if (!username || !password) return;
+
+    // Show loading
+    const btnText = $('#login-submit .btn-text');
+    const btnSpinner = $('#login-submit .btn-spinner');
+    btnText.style.display = 'none';
+    btnSpinner.style.display = 'inline-flex';
+    loginError.style.display = 'none';
+
+    try {
+        const res = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password }),
+        });
+        const json = await res.json();
+
+        if (json.success) {
+            authToken = json.data.token;
+            localStorage.setItem('cms_token', authToken);
+            showDashboard(json.data.user);
+            loginForm.reset();
+        } else {
+            loginError.textContent = json.error;
+            loginError.style.display = 'block';
+        }
+    } catch (err) {
+        loginError.textContent = 'Không thể kết nối server';
+        loginError.style.display = 'block';
+    } finally {
+        btnText.style.display = 'inline';
+        btnSpinner.style.display = 'none';
+    }
+}
+
+function logout() {
+    authToken = null;
+    localStorage.removeItem('cms_token');
+    allProducts = [];
+    showLogin();
+}
+
+// Helper: add auth header to fetch options
+function authHeaders(extraHeaders = {}) {
+    return {
+        Authorization: `Bearer ${authToken}`,
+        ...extraHeaders,
+    };
+}
+
 // ===== Event Listeners =====
 function setupEventListeners() {
+    // Login form
+    loginForm.addEventListener('submit', handleLogin);
+
+    // Logout
+    $('#btn-logout').addEventListener('click', logout);
+
     // Add product
     $('#btn-add-product').addEventListener('click', () => openProductModal());
 
@@ -170,12 +226,19 @@ function setupEventListeners() {
     });
 }
 
-// ===== API =====
+// ===== API (with auth) =====
 async function loadProducts() {
     try {
         showLoading(true);
-        const res = await fetch(API_URL, { headers: authHeaders() });
-        if (handleAuthError(res)) return;
+        const res = await fetch(API_URL, {
+            headers: authHeaders(),
+        });
+
+        if (res.status === 401) {
+            logout();
+            return;
+        }
+
         const json = await res.json();
 
         if (json.success) {
@@ -195,29 +258,29 @@ async function loadProducts() {
 async function createProduct(data) {
     const res = await fetch(API_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify(data),
     });
-    if (handleAuthError(res)) return { success: false };
+    if (res.status === 401) { logout(); return { success: false }; }
     return res.json();
 }
 
 async function updateProduct(id, data) {
     const res = await fetch(`${API_URL}/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify(data),
     });
-    if (handleAuthError(res)) return { success: false };
+    if (res.status === 401) { logout(); return { success: false }; }
     return res.json();
 }
 
-async function deleteProduct(id) {
+async function deleteProductApi(id) {
     const res = await fetch(`${API_URL}/${id}`, {
         method: 'DELETE',
         headers: authHeaders(),
     });
-    if (handleAuthError(res)) return { success: false };
+    if (res.status === 401) { logout(); return { success: false }; }
     return res.json();
 }
 
@@ -406,7 +469,7 @@ async function handleDelete() {
     if (!deletingId) return;
 
     try {
-        const json = await deleteProduct(deletingId);
+        const json = await deleteProductApi(deletingId);
         if (json.success) {
             showToast('Đã xóa sản phẩm thành công!', 'success');
             closeDeleteModal();
@@ -629,4 +692,3 @@ function categoryLabel(cat) {
 window.editProduct = editProduct;
 window.confirmDelete = confirmDelete;
 window.removeItem = removeItem;
-window.logout = logout;
