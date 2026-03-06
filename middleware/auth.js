@@ -8,6 +8,15 @@ export function authMiddleware(req, res, next) {
         return next();
     }
 
+    // Allow public GET access to products, brands, categories
+    if (req.method === 'GET' && (
+        req.path.startsWith('/api/products') ||
+        req.path.startsWith('/api/brands') ||
+        req.path.startsWith('/api/categories')
+    )) {
+        return next();
+    }
+
     // Only protect /api routes
     if (!req.path.startsWith('/api')) {
         return next();
