@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nhật Hạ Store — Quản lý sản phẩm</title>
+  <meta name="description" content="Trang quản trị sản phẩm ghế ô tô trẻ em Nhật Hạ Store">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon">NH</div>
+      <div class="brand-text">
+        <h1>Nhật Hạ</h1>
+        <span>Admin CMS</span>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="#" class="nav-item active" id="nav-dashboard">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        <span>Dashboard</span>
+      </a>
+      <a href="#" class="nav-item" id="nav-products">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+        <span>Sản phẩm</span>
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-info">
+        <div class="user-avatar">A</div>
+        <div class="user-details">
+          <span class="user-name">Admin</span>
+          <span class="user-role">Quản trị viên</span>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <!-- Header -->
+    <header class="top-header">
+      <button class="mobile-toggle" id="mobile-toggle">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div class="header-left">
+        <h2 id="page-title">Quản lý sản phẩm</h2>
+        <p id="page-subtitle" class="subtitle">Quản lý danh sách ghế ô tô trẻ em</p>
+      </div>
+      <div class="header-right">
+        <button class="btn btn-primary" id="btn-add-product">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Thêm sản phẩm
+        </button>
+      </div>
+    </header>
+
+    <!-- Stats Cards -->
+    <section class="stats-grid" id="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon stat-icon-blue">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+        </div>
+        <div class="stat-info">
+          <span class="stat-value" id="stat-total">0</span>
+          <span class="stat-label">Tổng sản phẩm</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon stat-icon-purple">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+        </div>
+        <div class="stat-info">
+          <span class="stat-value" id="stat-infant">0</span>
+          <span class="stat-label">Sơ sinh (Infant)</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon stat-icon-green">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+        </div>
+        <div class="stat-info">
+          <span class="stat-value" id="stat-toddler">0</span>
+          <span class="stat-label">Trẻ nhỏ (Toddler)</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon stat-icon-orange">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </div>
+        <div class="stat-info">
+          <span class="stat-value" id="stat-child">0</span>
+          <span class="stat-label">Trẻ lớn (Child)</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Filters -->
+    <section class="filters-bar">
+      <div class="search-box">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="search-input" placeholder="Tìm kiếm sản phẩm..." autocomplete="off">
+      </div>
+      <div class="filter-chips">
+        <button class="chip active" data-category="all">Tất cả</button>
+        <button class="chip" data-category="infant">Sơ sinh</button>
+        <button class="chip" data-category="toddler">Trẻ nhỏ</button>
+        <button class="chip" data-category="child">Trẻ lớn</button>
+      </div>
+    </section>
+
+    <!-- Products Table -->
+    <section class="table-container">
+      <div class="table-loading" id="table-loading">
+        <div class="spinner"></div>
+        <span>Đang tải sản phẩm...</span>
+      </div>
+      <table class="products-table" id="products-table">
+        <thead>
+          <tr>
+            <th class="th-image">Hình ảnh</th>
+            <th>Tên sản phẩm</th>
+            <th>Thương hiệu</th>
+            <th>Danh mục</th>
+            <th>Giá</th>
+            <th>Badge</th>
+            <th class="th-actions">Thao tác</th>
+          </tr>
+        </thead>
+        <tbody id="products-tbody">
+        </tbody>
+      </table>
+      <div class="empty-state" id="empty-state" style="display: none;">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+        <h3>Không tìm thấy sản phẩm</h3>
+        <p>Thử thay đổi bộ lọc hoặc thêm sản phẩm mới</p>
+      </div>
+    </section>
+  </main>
+
+  <!-- Product Modal -->
+  <div class="modal-overlay" id="product-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="modal-title">Thêm sản phẩm mới</h3>
+        <button class="modal-close" id="modal-close">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <form id="product-form" class="modal-body">
+        <input type="hidden" id="form-id">
+
+        <!-- Basic Info -->
+        <div class="form-section">
+          <h4 class="form-section-title">Thông tin cơ bản</h4>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="form-name">Tên sản phẩm <span class="required">*</span></label>
+              <input type="text" id="form-name" required placeholder="VD: Sirona Ti">
+            </div>
+            <div class="form-group">
+              <label for="form-slug">Slug <span class="required">*</span></label>
+              <input type="text" id="form-slug" required placeholder="VD: sirona-ti">
+            </div>
+            <div class="form-group">
+              <label for="form-brand">Thương hiệu <span class="required">*</span></label>
+              <select id="form-brand" required>
+                <option value="">Chọn thương hiệu</option>
+                <option value="Nhật Hạ Platinum">Nhật Hạ Platinum</option>
+                <option value="Nhật Hạ Gold">Nhật Hạ Gold</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="form-category">Danh mục <span class="required">*</span></label>
+              <select id="form-category" required>
+                <option value="">Chọn danh mục</option>
+                <option value="infant">Sơ sinh (Infant)</option>
+                <option value="toddler">Trẻ nhỏ (Toddler)</option>
+                <option value="child">Trẻ lớn (Child)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="form-price">Giá <span class="required">*</span></label>
+              <input type="text" id="form-price" required placeholder="VD: 15.900.000₫">
+            </div>
+            <div class="form-group">
+              <label for="form-age-range">Độ tuổi</label>
+              <input type="text" id="form-age-range" placeholder="VD: 0 — 4 tuổi">
+            </div>
+            <div class="form-group">
+              <label for="form-weight">Cân nặng</label>
+              <input type="text" id="form-weight" placeholder="VD: 3.5 — 18 kg">
+            </div>
+            <div class="form-group">
+              <label for="form-badge">Badge</label>
+              <input type="text" id="form-badge" placeholder="VD: Mới, Bestseller">
+            </div>
+            <div class="form-group">
+              <label for="form-badge-type">Badge Type</label>
+              <select id="form-badge-type">
+                <option value="">Không có</option>
+                <option value="new">Mới (new)</option>
+                <option value="winner">Winner</option>
+                <option value="award">Award</option>
+                <option value="offer">Ưu đãi (offer)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Description -->
+        <div class="form-section">
+          <h4 class="form-section-title">Mô tả</h4>
+          <div class="form-group full-width">
+            <label for="form-description">Mô tả sản phẩm</label>
+            <textarea id="form-description" rows="3" placeholder="Nhập mô tả chi tiết..."></textarea>
+          </div>
+        </div>
+
+        <!-- Images -->
+        <div class="form-section">
+          <h4 class="form-section-title">
+            Hình ảnh (URL)
+            <button type="button" class="btn-icon" id="btn-add-image" title="Thêm ảnh">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+          </h4>
+          <div id="images-list" class="dynamic-list"></div>
+        </div>
+
+        <!-- Colors -->
+        <div class="form-section">
+          <h4 class="form-section-title">
+            Màu sắc
+            <button type="button" class="btn-icon" id="btn-add-color" title="Thêm màu">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+          </h4>
+          <div id="colors-list" class="dynamic-list"></div>
+        </div>
+
+        <!-- Features -->
+        <div class="form-section">
+          <h4 class="form-section-title">
+            Tính năng
+            <button type="button" class="btn-icon" id="btn-add-feature" title="Thêm tính năng">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+          </h4>
+          <div id="features-list" class="dynamic-list"></div>
+        </div>
+
+        <!-- Highlights -->
+        <div class="form-section">
+          <h4 class="form-section-title">
+            Điểm nổi bật
+            <button type="button" class="btn-icon" id="btn-add-highlight" title="Thêm điểm nổi bật">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+          </h4>
+          <div id="highlights-list" class="dynamic-list"></div>
+        </div>
+
+        <!-- Specs -->
+        <div class="form-section">
+          <h4 class="form-section-title">
+            Thông số kỹ thuật
+            <button type="button" class="btn-icon" id="btn-add-spec" title="Thêm thông số">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+          </h4>
+          <div id="specs-list" class="dynamic-list"></div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" id="btn-cancel">Hủy</button>
+          <button type="submit" class="btn btn-primary" id="btn-submit">
+            <span class="btn-text">Lưu sản phẩm</span>
+            <div class="btn-spinner" style="display:none;"><div class="spinner small"></div></div>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Delete Confirmation Modal -->
+  <div class="modal-overlay" id="delete-modal">
+    <div class="modal modal-small">
+      <div class="modal-header">
+        <h3>Xác nhận xóa</h3>
+        <button class="modal-close" id="delete-modal-close">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="delete-warning">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <p>Bạn có chắc muốn xóa sản phẩm <strong id="delete-product-name"></strong>?</p>
+          <span class="delete-note">Hành động này không thể hoàn tác.</span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="delete-cancel">Hủy</button>
+        <button class="btn btn-danger" id="delete-confirm">Xóa sản phẩm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
