@@ -9,6 +9,7 @@ let currentFilter = 'all';
 let currentSearch = '';
 let editingId = null;
 let deletingId = null;
+let deletingType = 'product';
 let currentPage = 'dashboard';
 
 // ===== DOM =====
@@ -357,18 +358,12 @@ function editItem(type, id) {
     if (item) openItemModal(type, item);
 }
 
-async function deleteItem(type, id, name) {
-    if (!confirm(`Bạn có chắc muốn xóa "${name}"?`)) return;
-    const endpoint = type === 'brand' ? '/api/brands' : '/api/categories';
-    try {
-        const res = await fetch(`${endpoint}/${id}`, { method: 'DELETE', headers: authHeaders() });
-        if (res.status === 401) { logout(); return; }
-        const json = await res.json();
-        if (json.success) {
-            showToast('Đã xóa thành công!', 'success');
-            if (type === 'brand') loadBrands(); else loadCategories();
-        } else showToast('Lỗi: ' + json.error, 'error');
-    } catch (err) { showToast('Lỗi: ' + err.message, 'error'); }
+function deleteItem(type, id, name) {
+    deletingId = id;
+    deletingType = type;
+    $('#delete-product-name').textContent = name;
+    deleteModal.classList.add('open');
+    document.body.style.overflow = 'hidden';
 }
 
 async function handleItemSubmit(e) {
@@ -521,19 +516,36 @@ function editProduct(id) {
 
 function confirmDelete(id, name) {
     deletingId = id;
+    deletingType = 'product';
     $('#delete-product-name').textContent = name;
     deleteModal.classList.add('open');
     document.body.style.overflow = 'hidden';
 }
 
-function closeDeleteModal() { deleteModal.classList.remove('open'); document.body.style.overflow = ''; deletingId = null; }
+function closeDeleteModal() { deleteModal.classList.remove('open'); document.body.style.overflow = ''; deletingId = null; deletingType = 'product'; }
 
 async function handleDelete() {
     if (!deletingId) return;
     try {
-        const json = await deleteProductApi(deletingId);
-        if (json.success) { showToast('Đã xóa sản phẩm!', 'success'); closeDeleteModal(); await loadProducts(); }
-        else showToast('Lỗi: ' + json.error, 'error');
+        let json;
+        if (deletingType === 'brand') {
+            const res = await fetch(`/api/brands/${deletingId}`, { method: 'DELETE', headers: authHeaders() });
+            if (res.status === 401) { logout(); return; }
+            json = await res.json();
+        } else if (deletingType === 'category') {
+            const res = await fetch(`/api/categories/${deletingId}`, { method: 'DELETE', headers: authHeaders() });
+            if (res.status === 401) { logout(); return; }
+            json = await res.json();
+        } else {
+            json = await deleteProductApi(deletingId);
+        }
+        if (json.success) {
+            showToast('Đã xóa thành công!', 'success');
+            closeDeleteModal();
+            if (deletingType === 'brand') loadBrands();
+            else if (deletingType === 'category') loadCategories();
+            else loadProducts();
+        } else showToast('Lỗi: ' + json.error, 'error');
     } catch (err) { showToast('Lỗi: ' + err.message, 'error'); }
 }
 
