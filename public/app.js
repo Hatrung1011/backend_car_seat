@@ -186,6 +186,9 @@ function setupEventListeners() {
     productModal.addEventListener('click', e => { if (e.target === productModal) closeProductModal(); });
     productForm.addEventListener('submit', handleFormSubmit);
 
+    // Image upload
+    setupImageUpload();
+
     // Delete modal
     $('#delete-modal-close').addEventListener('click', closeDeleteModal);
     $('#delete-cancel').addEventListener('click', closeDeleteModal);
@@ -201,8 +204,7 @@ function setupEventListeners() {
         if (!$('#item-form-id').value) $('#item-form-slug').value = slugify(e.target.value);
     });
 
-    // Dynamic list buttons
-    $('#btn-add-image').addEventListener('click', () => addDynamicItem('images-list', 'image'));
+    // Dynamic list add buttons
     $('#btn-add-color').addEventListener('click', () => addDynamicItem('colors-list', 'color'));
     $('#btn-add-feature').addEventListener('click', () => addDynamicItem('features-list', 'feature'));
     $('#btn-add-highlight').addEventListener('click', () => addDynamicItem('highlights-list', 'highlight'));
@@ -451,7 +453,8 @@ function openProductModal(product = null) {
     modalTitle.textContent = product ? 'Chỉnh sửa sản phẩm' : 'Thêm sản phẩm mới';
     productForm.reset();
     $('#form-id').value = '';
-    ['images-list', 'colors-list', 'features-list', 'highlights-list', 'specs-list'].forEach(id => clearDynamicList(id));
+    ['colors-list', 'features-list', 'highlights-list', 'specs-list'].forEach(id => clearDynamicList(id));
+    clearImagePreviews();
 
     // Populate brand select dynamically (use brand ID as value)
     const brandSelect = $('#form-brand');
@@ -486,13 +489,12 @@ function openProductModal(product = null) {
         $('#form-badge').value = product.badge || '';
         $('#form-badge-type').value = product.badge_type || '';
         $('#form-description').value = product.description || '';
-        if (product.images?.length) product.images.forEach(url => addDynamicItem('images-list', 'image', { url }));
+        if (product.images?.length) product.images.forEach(url => addImagePreview(url));
         if (product.colors?.length) product.colors.forEach(c => addDynamicItem('colors-list', 'color', { name: c.name, hex: c.hex }));
         if (product.features?.length) product.features.forEach(f => addDynamicItem('features-list', 'feature', { value: f }));
         if (product.highlights?.length) product.highlights.forEach(h => addDynamicItem('highlights-list', 'highlight', { value: h }));
         if (product.specs) Object.entries(product.specs).forEach(([key, val]) => addDynamicItem('specs-list', 'spec', { key, value: val }));
     } else {
-        addDynamicItem('images-list', 'image');
         addDynamicItem('colors-list', 'color');
         addDynamicItem('features-list', 'feature');
         addDynamicItem('highlights-list', 'highlight');
@@ -578,7 +580,7 @@ function collectFormData() {
     };
 }
 
-function collectImages() { const r = []; $$('#images-list .dynamic-item').forEach(i => { const v = i.querySelector('input[data-field="url"]').value.trim(); if (v) r.push(v); }); return r; }
+function collectImages() { const r = []; $$('#images-preview .img-preview-item').forEach(i => { const url = i.dataset.url; if (url) r.push(url); }); return r; }
 function collectColors() { const r = []; $$('#colors-list .dynamic-item').forEach(i => { const n = i.querySelector('input[data-field="name"]').value.trim(); const h = i.querySelector('input[data-field="hex"]').value; if (n) r.push({ name: n, hex: h }); }); return r; }
 function collectSimpleList(id) { const r = []; $$(`#${id} .dynamic-item`).forEach(i => { const v = i.querySelector('input[data-field="value"]').value.trim(); if (v) r.push(v); }); return r; }
 function collectSpecs() { const r = {}; $$('#specs-list .dynamic-item').forEach(i => { const k = i.querySelector('input[data-field="key"]').value.trim(); const v = i.querySelector('input[data-field="value"]').value.trim(); if (k) r[k] = v; }); return r; }
@@ -590,7 +592,6 @@ function addDynamicItem(listId, type, data = {}) {
     item.className = 'dynamic-item';
     const rmSvg = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
     const templates = {
-        image: `<input type="text" data-field="url" placeholder="https://example.com/image.jpg" value="${escapeAttr(data.url || '')}"><button type="button" class="remove-btn" onclick="removeItem(this)">${rmSvg}</button>`,
         color: `<input type="text" data-field="name" placeholder="Tên màu" value="${escapeAttr(data.name || '')}" style="flex:2"><input type="color" data-field="hex" value="${data.hex || '#2d2d2d'}"><button type="button" class="remove-btn" onclick="removeItem(this)">${rmSvg}</button>`,
         feature: `<input type="text" data-field="value" placeholder="VD: ISOFIX" value="${escapeAttr(data.value || '')}"><button type="button" class="remove-btn" onclick="removeItem(this)">${rmSvg}</button>`,
         highlight: `<input type="text" data-field="value" placeholder="VD: Xoay 360°" value="${escapeAttr(data.value || '')}"><button type="button" class="remove-btn" onclick="removeItem(this)">${rmSvg}</button>`,
@@ -626,3 +627,150 @@ window.openProductModal = openProductModal;
 window.openItemModal = openItemModal;
 window.editItem = editItem;
 window.deleteItem = deleteItem;
+window.removeImagePreview = removeImagePreview;
+
+// ===== Image Upload System =====
+function setupImageUpload() {
+    const zone = $('#upload-zone');
+    const fileInput = $('#file-input');
+    if (!zone || !fileInput) return;
+
+    // Click to select
+    zone.addEventListener('click', (e) => {
+        if (e.target.tagName !== 'LABEL') fileInput.click();
+    });
+
+    // File selected
+    fileInput.addEventListener('change', (e) => {
+        handleFiles(e.target.files);
+        fileInput.value = '';
+    });
+
+    // Drag & drop
+    zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('drag-over'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+    zone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        zone.classList.remove('drag-over');
+        handleFiles(e.dataTransfer.files);
+    });
+}
+
+async function handleFiles(files) {
+    for (const file of files) {
+        if (!file.type.startsWith('image/')) continue;
+        try {
+            const webpBlob = await convertToWebP(file, 1200, 0.85);
+            const previewUrl = URL.createObjectURL(webpBlob);
+            const sizeKB = (webpBlob.size / 1024).toFixed(0);
+            const itemId = 'img-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
+            addImagePreviewUploading(itemId, previewUrl, sizeKB);
+            await uploadImage(webpBlob, file.name, itemId);
+        } catch (err) {
+            showToast('Lỗi xử lý ảnh: ' + err.message, 'error');
+        }
+    }
+}
+
+function convertToWebP(file, maxWidth, quality) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+            let w = img.width, h = img.height;
+            if (w > maxWidth) { h = Math.round(h * maxWidth / w); w = maxWidth; }
+            const canvas = document.createElement('canvas');
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, w, h);
+            canvas.toBlob(blob => {
+                if (blob) resolve(blob);
+                else reject(new Error('Không thể chuyển đổi ảnh'));
+            }, 'image/webp', quality);
+        };
+        img.onerror = () => reject(new Error('Không thể đọc ảnh'));
+        img.src = URL.createObjectURL(file);
+    });
+}
+
+async function uploadImage(blob, originalName, itemId) {
+    const filename = originalName.replace(/\.[^.]+$/, '') + '.webp';
+    try {
+        const res = await fetch('/api/upload', {
+            method: 'POST',
+            headers: {
+                ...authHeaders(),
+                'Content-Type': 'image/webp',
+                'X-Filename': filename,
+            },
+            body: blob,
+        });
+        if (res.status === 401) { logout(); return; }
+        const json = await res.json();
+        if (json.success) {
+            const el = document.getElementById(itemId);
+            if (el) {
+                el.dataset.url = json.data.url;
+                el.dataset.path = json.data.path;
+                el.classList.remove('uploading');
+                const progress = el.querySelector('.img-progress');
+                if (progress) progress.style.width = '100%';
+                setTimeout(() => { if (progress) progress.remove(); }, 500);
+            }
+            showToast('Đã upload ảnh thành công', 'success');
+        } else {
+            showToast('Lỗi upload: ' + json.error, 'error');
+            const el = document.getElementById(itemId);
+            if (el) el.remove();
+        }
+    } catch (err) {
+        showToast('Lỗi upload: ' + err.message, 'error');
+        const el = document.getElementById(itemId);
+        if (el) el.remove();
+    }
+}
+
+function addImagePreviewUploading(id, previewUrl, sizeKB) {
+    const container = $('#images-preview');
+    const item = document.createElement('div');
+    item.className = 'img-preview-item uploading';
+    item.id = id;
+    item.innerHTML = `
+        <img src="${previewUrl}" alt="preview">
+        <button type="button" class="img-remove" onclick="removeImagePreview('${id}')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+        <span class="img-size">${sizeKB} KB</span>
+        <div class="img-progress" style="width:30%"></div>
+    `;
+    container.appendChild(item);
+}
+
+function addImagePreview(url) {
+    const container = $('#images-preview');
+    const id = 'img-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
+    const item = document.createElement('div');
+    item.className = 'img-preview-item';
+    item.id = id;
+    item.dataset.url = url;
+    item.innerHTML = `
+        <img src="${url}" alt="product">
+        <button type="button" class="img-remove" onclick="removeImagePreview('${id}')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+    `;
+    container.appendChild(item);
+}
+
+function removeImagePreview(id) {
+    const el = document.getElementById(id);
+    if (el) {
+        el.style.animation = 'toastOut 0.2s ease forwards';
+        setTimeout(() => el.remove(), 200);
+    }
+}
+
+function clearImagePreviews() {
+    const container = $('#images-preview');
+    if (container) container.innerHTML = '';
+}

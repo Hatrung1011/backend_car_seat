@@ -8,6 +8,7 @@ import authRoutes from './routes/auth.js';
 import productRoutes from './routes/products.js';
 import brandRoutes from './routes/brands.js';
 import categoryRoutes from './routes/categories.js';
+import uploadRoutes from './routes/upload.js';
 
 dotenv.config();
 
@@ -19,7 +20,10 @@ const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors());
-app.use(express.json({ limit: '10mb' }));
+app.use((req, res, next) => {
+    if (req.path.startsWith('/api/upload') && req.method === 'POST') return next();
+    express.json({ limit: '10mb' })(req, res, next);
+});
 app.use(express.urlencoded({ extended: true }));
 
 // Serve static admin files
@@ -33,6 +37,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/brands', brandRoutes);
 app.use('/api/categories', categoryRoutes);
+app.use('/api/upload', uploadRoutes);
 
 // Serve admin page for all non-API routes
 app.get('*', (req, res) => {

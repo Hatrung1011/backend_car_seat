@@ -396,15 +396,19 @@
         <!-- Images -->
         <div class="form-section">
           <h4 class="form-section-title">
-            Hình ảnh (URL)
-            <button type="button" class="btn-icon" id="btn-add-image" title="Thêm ảnh">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-            </button>
+            Hình ảnh sản phẩm
           </h4>
-          <div id="images-list" class="dynamic-list"></div>
+          <div class="upload-zone" id="upload-zone">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="17 8 12 3 7 8" />
+              <line x1="12" y1="3" x2="12" y2="15" />
+            </svg>
+            <p>Kéo thả ảnh vào đây hoặc <label for="file-input" class="upload-link">chọn file</label></p>
+            <span class="upload-hint">WebP, JPEG, PNG — Tự động tối ưu sang WebP</span>
+            <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp" multiple hidden>
+          </div>
+          <div id="images-preview" class="images-preview"></div>
         </div>
 
         <!-- Colors -->
