@@ -409,7 +409,7 @@ function renderProducts() {
     if (currentSearch) {
         const q = currentSearch.toLowerCase();
         filtered = filtered.filter(p =>
-            p.name.toLowerCase().includes(q) || p.brand.toLowerCase().includes(q) || (p.description && p.description.toLowerCase().includes(q))
+            p.name.toLowerCase().includes(q) || (p.brand && p.brand.toLowerCase().includes(q)) || (p.description && p.description.toLowerCase().includes(q))
         );
     }
     if (!filtered.length) {
@@ -421,8 +421,8 @@ function renderProducts() {
     <tr>
       <td><img class="product-thumb" src="${p.images && p.images[0] ? p.images[0] : 'https://via.placeholder.com/48'}" alt="${p.name}" loading="lazy"></td>
       <td><div class="product-name-cell"><span class="product-name">${escapeHtml(p.name)}</span><span class="product-slug">${escapeHtml(p.slug)}</span></div></td>
-      <td>${escapeHtml(p.brand)}</td>
-      <td><span class="category-badge ${p.category}">${categoryLabel(p.category)}</span></td>
+      <td>${escapeHtml(p.brand || '—')}</td>
+      <td><span class="category-badge ${p.category || ''}">${p.category_name || categoryLabel(p.category)}</span></td>
       <td><strong>${escapeHtml(p.price)}</strong></td>
       <td>${p.badge ? `<span class="badge-tag ${p.badge_type || ''}">${escapeHtml(p.badge)}</span>` : '<span style="color:var(--text-muted)">—</span>'}</td>
       <td><div class="actions-cell">
@@ -453,33 +453,33 @@ function openProductModal(product = null) {
     $('#form-id').value = '';
     ['images-list', 'colors-list', 'features-list', 'highlights-list', 'specs-list'].forEach(id => clearDynamicList(id));
 
-    // Populate brand select dynamically
+    // Populate brand select dynamically (use brand ID as value)
     const brandSelect = $('#form-brand');
     brandSelect.innerHTML = '<option value="">Chọn thương hiệu</option>';
     allBrands.forEach(b => {
-        brandSelect.innerHTML += `<option value="${escapeAttr(b.name)}">${escapeHtml(b.name)}</option>`;
+        brandSelect.innerHTML += `<option value="${b.id}">${escapeHtml(b.name)}</option>`;
     });
     // Fallback if no brands loaded
     if (!allBrands.length) {
-        brandSelect.innerHTML += '<option value="Nhật Hạ Platinum">Nhật Hạ Platinum</option><option value="Nhật Hạ Gold">Nhật Hạ Gold</option>';
+        brandSelect.innerHTML += '<option value="">Chưa có thương hiệu</option>';
     }
 
-    // Populate category select dynamically
+    // Populate category select dynamically (use category ID as value)
     const catSelect = $('#form-category');
     catSelect.innerHTML = '<option value="">Chọn danh mục</option>';
     allCategories.forEach(c => {
-        catSelect.innerHTML += `<option value="${escapeAttr(c.slug)}">${escapeHtml(c.name)}</option>`;
+        catSelect.innerHTML += `<option value="${c.id}">${escapeHtml(c.name)}</option>`;
     });
     if (!allCategories.length) {
-        catSelect.innerHTML += '<option value="infant">Sơ sinh</option><option value="toddler">Trẻ nhỏ</option><option value="child">Trẻ lớn</option>';
+        catSelect.innerHTML += '<option value="">Chưa có danh mục</option>';
     }
 
     if (product) {
         $('#form-id').value = product.id;
         $('#form-name').value = product.name || '';
         $('#form-slug').value = product.slug || '';
-        $('#form-brand').value = product.brand || '';
-        $('#form-category').value = product.category || '';
+        $('#form-brand').value = product.brand_id || '';
+        $('#form-category').value = product.category_id || '';
         $('#form-price').value = product.price || '';
         $('#form-age-range').value = product.age_range || '';
         $('#form-weight').value = product.weight || '';
@@ -568,7 +568,7 @@ async function handleFormSubmit(e) {
 function collectFormData() {
     return {
         name: $('#form-name').value.trim(), slug: $('#form-slug').value.trim(),
-        brand: $('#form-brand').value, category: $('#form-category').value,
+        brand_id: $('#form-brand').value || null, category_id: $('#form-category').value || null,
         price: $('#form-price').value.trim(), age_range: $('#form-age-range').value.trim(),
         weight: $('#form-weight').value.trim(), badge: $('#form-badge').value.trim() || null,
         badge_type: $('#form-badge-type').value || null, description: $('#form-description').value.trim(),

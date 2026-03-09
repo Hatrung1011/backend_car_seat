@@ -3,6 +3,20 @@ import supabase from '../db/supabase.js';
 
 const router = Router();
 
+// Helper: flatten joined product data for backward-compatible API response
+function flattenProduct(p) {
+    return {
+        ...p,
+        brand: p.brands ? p.brands.name : null,
+        brand_id: p.brand_id,
+        category: p.categories ? p.categories.slug : null,
+        category_name: p.categories ? p.categories.name : null,
+        category_id: p.category_id,
+        brands: undefined,
+        categories: undefined,
+    };
+}
+
 // GET /api/products — List all products
 router.get('/', async (req, res) => {
     try {
@@ -10,23 +24,37 @@ router.get('/', async (req, res) => {
 
         let query = supabase
             .from('products')
-            .select('*')
+            .select('*, brands(id, name), categories(id, name, slug)')
             .order('id', { ascending: true });
 
         if (category && category !== 'all') {
-            query = query.eq('category', category);
+            // Support filtering by category_id (number) or category slug (string)
+            const catId = parseInt(category);
+            if (!isNaN(catId)) {
+                query = query.eq('category_id', catId);
+            } else {
+                // Filter by slug — need to use the categories relation
+                query = query.eq('categories.slug', category);
+            }
         }
 
         if (search) {
             query = query.or(
-                `name.ilike.%${search}%,brand.ilike.%${search}%,description.ilike.%${search}%`
+                `name.ilike.%${search}%,description.ilike.%${search}%`
             );
         }
 
         const { data, error } = await query;
 
         if (error) throw error;
-        res.json({ success: true, data });
+
+        // Filter out products where category filter via slug didn't match
+        let result = data;
+        if (category && category !== 'all' && isNaN(parseInt(category))) {
+            result = data.filter(p => p.categories && p.categories.slug === category);
+        }
+
+        res.json({ success: true, data: result.map(flattenProduct) });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
@@ -37,7 +65,7 @@ router.get('/:id', async (req, res) => {
     try {
         const { data, error } = await supabase
             .from('products')
-            .select('*')
+            .select('*, brands(id, name), categories(id, name, slug)')
             .eq('id', req.params.id)
             .single();
 
@@ -46,7 +74,7 @@ router.get('/:id', async (req, res) => {
             return res.status(404).json({ success: false, error: 'Product not found' });
         }
 
-        res.json({ success: true, data });
+        res.json({ success: true, data: flattenProduct(data) });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
@@ -60,11 +88,11 @@ router.post('/', async (req, res) => {
         const { data, error } = await supabase
             .from('products')
             .insert(productData)
-            .select()
+            .select('*, brands(id, name), categories(id, name, slug)')
             .single();
 
         if (error) throw error;
-        res.status(201).json({ success: true, data });
+        res.status(201).json({ success: true, data: flattenProduct(data) });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
@@ -79,7 +107,7 @@ router.put('/:id', async (req, res) => {
             .from('products')
             .update(productData)
             .eq('id', req.params.id)
-            .select()
+            .select('*, brands(id, name), categories(id, name, slug)')
             .single();
 
         if (error) throw error;
@@ -87,7 +115,7 @@ router.put('/:id', async (req, res) => {
             return res.status(404).json({ success: false, error: 'Product not found' });
         }
 
-        res.json({ success: true, data });
+        res.json({ success: true, data: flattenProduct(data) });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
@@ -113,7 +141,7 @@ function sanitizeProductData(body) {
     const {
         slug,
         name,
-        brand,
+        brand_id,
         age_range,
         weight,
         price,
@@ -121,7 +149,7 @@ function sanitizeProductData(body) {
         badge_type,
         colors,
         images,
-        category,
+        category_id,
         features,
         description,
         highlights,
@@ -131,7 +159,7 @@ function sanitizeProductData(body) {
     return {
         slug,
         name,
-        brand,
+        brand_id: brand_id ? parseInt(brand_id) : null,
         age_range,
         weight,
         price,
@@ -139,7 +167,7 @@ function sanitizeProductData(body) {
         badge_type: badge_type || null,
         colors: colors || [],
         images: images || [],
-        category,
+        category_id: category_id ? parseInt(category_id) : null,
         features: features || [],
         description: description || '',
         highlights: highlights || [],
