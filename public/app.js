@@ -50,7 +50,7 @@ async function checkAuth() {
         const json = await res.json();
         if (json.success && json.authenticated) showDashboard(json.user);
         else logout();
-    } catch { showDashboard({ username: 'Admin' }); }
+    } catch { showDashboard({ email: 'Admin' }); }
 }
 
 function showLogin() {
@@ -62,15 +62,15 @@ function showDashboard(user) {
     loginScreen.classList.add('hidden');
     document.body.style.overflow = '';
     const su = $('#sidebar-username');
-    if (su && user) su.textContent = user.username || 'Admin';
+    if (su && user) su.textContent = user.email || 'Admin';
     navigateTo('dashboard');
 }
 
 async function handleLogin(e) {
     e.preventDefault();
-    const username = $('#login-username').value.trim();
+    const email = $('#login-email').value.trim();
     const password = $('#login-password').value;
-    if (!username || !password) return;
+    if (!email || !password) return;
     const btnText = $('#login-submit .btn-text');
     const btnSpinner = $('#login-submit .btn-spinner');
     btnText.style.display = 'none';
@@ -80,7 +80,7 @@ async function handleLogin(e) {
         const res = await fetch('/api/auth/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password }),
+            body: JSON.stringify({ email, password }),
         });
         const json = await res.json();
         if (json.success) {

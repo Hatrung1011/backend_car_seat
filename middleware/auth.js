@@ -1,8 +1,6 @@
-import jwt from 'jsonwebtoken';
+import supabase from '../db/supabase.js';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'nhat-ha-cms-secret-key-change-in-production';
-
-export function authMiddleware(req, res, next) {
+export async function authMiddleware(req, res, next) {
     // Skip auth for login route and static files
     if (req.path === '/api/auth/login' || req.path === '/api/auth/check') {
         return next();
@@ -29,14 +27,13 @@ export function authMiddleware(req, res, next) {
 
     const token = authHeader.split(' ')[1];
     try {
-        const decoded = jwt.verify(token, JWT_SECRET);
-        req.user = decoded;
+        const { data: { user }, error } = await supabase.auth.getUser(token);
+        if (error || !user) {
+            return res.status(401).json({ success: false, error: 'Token hết hạn hoặc không hợp lệ' });
+        }
+        req.user = user;
         next();
     } catch (err) {
         return res.status(401).json({ success: false, error: 'Token hết hạn hoặc không hợp lệ' });
     }
-}
-
-export function generateToken(payload) {
-    return jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
 }

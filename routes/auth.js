@@ -1,66 +1,40 @@
 import { Router } from 'express';
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import { generateToken } from '../middleware/auth.js';
+import supabase from '../db/supabase.js';
 
 const router = Router();
 
-const JWT_SECRET = process.env.JWT_SECRET || 'nhat-ha-cms-secret-key-change-in-production';
-
-// Default admin credentials (override via env vars)
-const ADMIN_USERNAME = (process.env.ADMIN_USERNAME || 'admin').trim();
-const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH ? process.env.ADMIN_PASSWORD_HASH.trim() : null;
-const ADMIN_PASSWORD_PLAIN = (process.env.ADMIN_PASSWORD || 'nhathastore2024').trim();
-
-// POST /api/auth/login
+// POST /api/auth/login — Authenticate via Supabase Auth
 router.post('/login', async (req, res) => {
     try {
-        const { username, password } = req.body;
+        const { email, password } = req.body;
 
-        if (!username || !password) {
+        if (!email || !password) {
             return res.status(400).json({
                 success: false,
-                error: 'Vui lòng nhập tên đăng nhập và mật khẩu',
+                error: 'Vui lòng nhập email và mật khẩu',
             });
         }
 
-        const inputUsername = username.trim();
-        const inputPassword = password.trim();
-
-        // Check username
-        if (inputUsername !== ADMIN_USERNAME) {
-            return res.status(401).json({
-                success: false,
-                error: 'Tên đăng nhập hoặc mật khẩu không đúng',
-            });
-        }
-
-        // Check password — use hash if available, otherwise plain text
-        let passwordValid = false;
-        if (ADMIN_PASSWORD_HASH) {
-            passwordValid = await bcrypt.compare(inputPassword, ADMIN_PASSWORD_HASH);
-        } else {
-            passwordValid = inputPassword === ADMIN_PASSWORD_PLAIN;
-        }
-
-        if (!passwordValid) {
-            return res.status(401).json({
-                success: false,
-                error: 'Tên đăng nhập hoặc mật khẩu không đúng',
-            });
-        }
-
-        // Generate JWT
-        const token = generateToken({
-            username: ADMIN_USERNAME,
-            role: 'admin',
+        const { data, error } = await supabase.auth.signInWithPassword({
+            email: email.trim(),
+            password: password,
         });
+
+        if (error) {
+            return res.status(401).json({
+                success: false,
+                error: 'Email hoặc mật khẩu không đúng',
+            });
+        }
 
         res.json({
             success: true,
             data: {
-                token,
-                user: { username: ADMIN_USERNAME, role: 'admin' },
+                token: data.session.access_token,
+                user: {
+                    email: data.user.email,
+                    role: 'admin',
+                },
             },
         });
     } catch (error) {
@@ -68,8 +42,8 @@ router.post('/login', async (req, res) => {
     }
 });
 
-// GET /api/auth/check — verify token is still valid
-router.get('/check', (req, res) => {
+// GET /api/auth/check — verify Supabase token is still valid
+router.get('/check', async (req, res) => {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return res.json({ success: false, authenticated: false });
@@ -77,8 +51,17 @@ router.get('/check', (req, res) => {
 
     try {
         const token = authHeader.split(' ')[1];
-        const decoded = jwt.verify(token, JWT_SECRET);
-        res.json({ success: true, authenticated: true, user: decoded });
+        const { data: { user }, error } = await supabase.auth.getUser(token);
+
+        if (error || !user) {
+            return res.json({ success: false, authenticated: false });
+        }
+
+        res.json({
+            success: true,
+            authenticated: true,
+            user: { email: user.email, role: 'admin' },
+        });
     } catch {
         res.json({ success: false, authenticated: false });
     }
