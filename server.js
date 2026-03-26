@@ -18,8 +18,14 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Middleware
-app.use(cors());
+// CORS: set CORS_ORIGINS=https://nhathastore.vn,https://www.nhathastore.vn in production
+const corsOrigins = process.env.CORS_ORIGINS?.split(',').map((s) => s.trim()).filter(Boolean);
+app.use(
+    cors({
+        origin: corsOrigins?.length ? corsOrigins : true,
+        credentials: true,
+    })
+);
 app.use((req, res, next) => {
     if (req.path.startsWith('/api/upload') && req.method === 'POST') return next();
     express.json({ limit: '10mb' })(req, res, next);
@@ -46,14 +52,11 @@ app.get('*', (req, res) => {
     }
 });
 
-// Start server (only in local dev, not on Vercel)
-if (!process.env.VERCEL) {
-    app.listen(PORT, () => {
-        console.log(`🚀 Server running at http://localhost:${PORT}`);
-        console.log(`📦 Admin CMS: http://localhost:${PORT}`);
-        console.log(`📡 API: http://localhost:${PORT}/api/products`);
-    });
-}
+// Bind 0.0.0.0 for Docker
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Server running at http://0.0.0.0:${PORT}`);
+    console.log(`📦 Admin CMS: /`);
+    console.log(`📡 API: /api/products`);
+});
 
-// Export for Vercel serverless
 export default app;
