@@ -1,5 +1,5 @@
+-- LEGACY: bản nháp cho Supabase SQL Editor. Stack hiện tại dùng db/schema.sql + migrate khi start.
 -- Supabase Migration: Create products table
--- Run this SQL in your Supabase SQL Editor (Dashboard → SQL Editor → New Query)
 
 CREATE TABLE IF NOT EXISTS products (
   id BIGSERIAL PRIMARY KEY,

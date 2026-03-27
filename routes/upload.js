@@ -1,14 +1,33 @@
 import { Router } from 'express';
-import supabase from '../db/supabase.js';
+import path from 'path';
+import fs from 'fs/promises';
+import { fileURLToPath } from 'url';
 
 const router = Router();
 
-const BUCKET = 'product-images';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const UPLOAD_ROOT = process.env.UPLOAD_DIR || path.join(__dirname, '..', 'data', 'uploads');
 
-// POST /api/upload — Upload image to Supabase Storage
+function publicBase() {
+    const b = process.env.PUBLIC_BASE_URL || 'http://localhost:3001';
+    return b.replace(/\/$/, '');
+}
+
+function toPublicUrl(relativePath) {
+    const rel = relativePath.replace(/^\/+/, '');
+    return `${publicBase()}/uploads/${rel}`;
+}
+
+function parseStoredPath(input) {
+    if (!input) return null;
+    const s = String(input);
+    const idx = s.indexOf('/uploads/');
+    if (idx >= 0) return s.slice(idx + '/uploads/'.length);
+    return s.replace(/^\/+/, '');
+}
+
 router.post('/', async (req, res) => {
     try {
-        // Read raw body as buffer
         const chunks = [];
         for await (const chunk of req) {
             chunks.push(chunk);
@@ -19,32 +38,20 @@ router.post('/', async (req, res) => {
             return res.status(400).json({ success: false, error: 'Không có file nào được gửi' });
         }
 
-        // Get content type and filename from headers
         const contentType = req.headers['content-type'] || 'image/webp';
         const filename = req.headers['x-filename'] || `${Date.now()}.webp`;
+        const safeName = path.basename(filename).replace(/[^a-zA-Z0-9._-]/g, '_');
+        const storagePath = `products/${Date.now()}_${safeName}`;
+        const absPath = path.join(UPLOAD_ROOT, storagePath);
 
-        // Build storage path: products/timestamp_filename
-        const storagePath = `products/${Date.now()}_${filename}`;
-
-        const { data, error } = await supabase.storage
-            .from(BUCKET)
-            .upload(storagePath, buffer, {
-                contentType,
-                upsert: false,
-            });
-
-        if (error) throw error;
-
-        // Get public URL
-        const { data: urlData } = supabase.storage
-            .from(BUCKET)
-            .getPublicUrl(data.path);
+        await fs.mkdir(path.dirname(absPath), { recursive: true });
+        await fs.writeFile(absPath, buffer);
 
         res.json({
             success: true,
             data: {
-                path: data.path,
-                url: urlData.publicUrl,
+                path: storagePath,
+                url: toPublicUrl(storagePath),
             },
         });
     } catch (error) {
@@ -52,19 +59,20 @@ router.post('/', async (req, res) => {
     }
 });
 
-// DELETE /api/upload — Delete image from Supabase Storage
 router.delete('/', async (req, res) => {
     try {
-        const { path } = req.body;
-        if (!path) {
+        const { path: bodyPath } = req.body;
+        if (!bodyPath) {
             return res.status(400).json({ success: false, error: 'Thiếu đường dẫn file' });
         }
 
-        const { error } = await supabase.storage
-            .from(BUCKET)
-            .remove([path]);
+        const rel = parseStoredPath(bodyPath);
+        if (!rel || rel.includes('..')) {
+            return res.status(400).json({ success: false, error: 'Đường dẫn không hợp lệ' });
+        }
 
-        if (error) throw error;
+        const absPath = path.join(UPLOAD_ROOT, rel);
+        await fs.unlink(absPath).catch(() => {});
 
         res.json({ success: true, message: 'Đã xóa ảnh' });
     } catch (error) {

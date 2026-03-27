@@ -1,142 +1,177 @@
 import { Router } from 'express';
-import supabase from '../db/supabase.js';
+import { pool } from '../db/pool.js';
 
 const router = Router();
 
-// Helper: flatten joined product data for backward-compatible API response
-function flattenProduct(p) {
+const SELECT_JOIN = `
+    SELECT p.id, p.slug, p.name, p.brand_id, p.category_id, p.age_range, p.weight, p.price,
+           p.badge, p.badge_type, p.colors, p.images, p.features, p.description, p.highlights, p.specs, p.created_at,
+           b.name AS brand_name, c.slug AS category_slug, c.name AS category_name
+    FROM products p
+    LEFT JOIN brands b ON b.id = p.brand_id
+    LEFT JOIN categories c ON c.id = p.category_id
+`;
+
+function mapProduct(row) {
+    if (!row) return null;
     return {
-        ...p,
-        brand: p.brands ? p.brands.name : null,
-        brand_id: p.brand_id,
-        category: p.categories ? p.categories.slug : null,
-        category_name: p.categories ? p.categories.name : null,
-        category_id: p.category_id,
-        brands: undefined,
-        categories: undefined,
+        id: row.id,
+        slug: row.slug,
+        name: row.name,
+        brand_id: row.brand_id,
+        category_id: row.category_id,
+        age_range: row.age_range,
+        weight: row.weight,
+        price: row.price,
+        badge: row.badge,
+        badge_type: row.badge_type,
+        colors: row.colors,
+        images: row.images,
+        features: row.features,
+        description: row.description,
+        highlights: row.highlights,
+        specs: row.specs,
+        created_at: row.created_at,
+        brand: row.brand_name,
+        category: row.category_slug,
+        category_name: row.category_name,
     };
 }
 
-// GET /api/products — List all products
+async function getProductById(id) {
+    const { rows } = await pool.query(`${SELECT_JOIN} WHERE p.id = $1`, [id]);
+    return rows[0] ? mapProduct(rows[0]) : null;
+}
+
 router.get('/', async (req, res) => {
     try {
         const { category, search } = req.query;
-
-        let query = supabase
-            .from('products')
-            .select('*, brands(id, name), categories(id, name, slug)')
-            .order('id', { ascending: true });
+        const params = [];
+        const where = ['1=1'];
+        let i = 1;
 
         if (category && category !== 'all') {
-            // Support filtering by category_id (number) or category slug (string)
-            const catId = parseInt(category);
-            if (!isNaN(catId)) {
-                query = query.eq('category_id', catId);
+            const catId = parseInt(category, 10);
+            if (!Number.isNaN(catId)) {
+                where.push(`p.category_id = $${i++}`);
+                params.push(catId);
             } else {
-                // Filter by slug — need to use the categories relation
-                query = query.eq('categories.slug', category);
+                where.push(`c.slug = $${i++}`);
+                params.push(category);
             }
         }
 
         if (search) {
-            query = query.or(
-                `name.ilike.%${search}%,description.ilike.%${search}%`
-            );
+            const pat = `%${search}%`;
+            where.push(`(p.name ILIKE $${i} OR p.description ILIKE $${i + 1})`);
+            params.push(pat, pat);
+            i += 2;
         }
 
-        const { data, error } = await query;
-
-        if (error) throw error;
-
-        // Filter out products where category filter via slug didn't match
-        let result = data;
-        if (category && category !== 'all' && isNaN(parseInt(category))) {
-            result = data.filter(p => p.categories && p.categories.slug === category);
-        }
-
-        res.json({ success: true, data: result.map(flattenProduct) });
+        const sql = `${SELECT_JOIN} WHERE ${where.join(' AND ')} ORDER BY p.id ASC`;
+        const { rows } = await pool.query(sql, params);
+        res.json({ success: true, data: rows.map(mapProduct) });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
 });
 
-// GET /api/products/:id — Get single product
 router.get('/:id', async (req, res) => {
     try {
-        const { data, error } = await supabase
-            .from('products')
-            .select('*, brands(id, name), categories(id, name, slug)')
-            .eq('id', req.params.id)
-            .single();
-
-        if (error) throw error;
+        const data = await getProductById(req.params.id);
         if (!data) {
             return res.status(404).json({ success: false, error: 'Product not found' });
         }
-
-        res.json({ success: true, data: flattenProduct(data) });
+        res.json({ success: true, data });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
 });
 
-// POST /api/products — Create product
 router.post('/', async (req, res) => {
     try {
-        const productData = sanitizeProductData(req.body);
-
-        const { data, error } = await supabase
-            .from('products')
-            .insert(productData)
-            .select('*, brands(id, name), categories(id, name, slug)')
-            .single();
-
-        if (error) throw error;
-        res.status(201).json({ success: true, data: flattenProduct(data) });
+        const d = sanitizeProductData(req.body);
+        const { rows } = await pool.query(
+            `INSERT INTO products (
+                slug, name, brand_id, category_id, age_range, weight, price,
+                badge, badge_type, colors, images, features, description, highlights, specs
+            ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11::jsonb,$12::jsonb,$13,$14::jsonb,$15::jsonb)
+            RETURNING id`,
+            [
+                d.slug,
+                d.name,
+                d.brand_id,
+                d.category_id,
+                d.age_range,
+                d.weight,
+                d.price,
+                d.badge,
+                d.badge_type,
+                JSON.stringify(d.colors),
+                JSON.stringify(d.images),
+                JSON.stringify(d.features),
+                d.description,
+                JSON.stringify(d.highlights),
+                JSON.stringify(d.specs),
+            ]
+        );
+        const data = await getProductById(rows[0].id);
+        res.status(201).json({ success: true, data });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
 });
 
-// PUT /api/products/:id — Update product
 router.put('/:id', async (req, res) => {
     try {
-        const productData = sanitizeProductData(req.body);
-
-        const { data, error } = await supabase
-            .from('products')
-            .update(productData)
-            .eq('id', req.params.id)
-            .select('*, brands(id, name), categories(id, name, slug)')
-            .single();
-
-        if (error) throw error;
-        if (!data) {
+        const d = sanitizeProductData(req.body);
+        const { rowCount } = await pool.query(
+            `UPDATE products SET
+                slug=$1, name=$2, brand_id=$3, category_id=$4, age_range=$5, weight=$6, price=$7,
+                badge=$8, badge_type=$9, colors=$10::jsonb, images=$11::jsonb, features=$12::jsonb,
+                description=$13, highlights=$14::jsonb, specs=$15::jsonb
+            WHERE id=$16`,
+            [
+                d.slug,
+                d.name,
+                d.brand_id,
+                d.category_id,
+                d.age_range,
+                d.weight,
+                d.price,
+                d.badge,
+                d.badge_type,
+                JSON.stringify(d.colors),
+                JSON.stringify(d.images),
+                JSON.stringify(d.features),
+                d.description,
+                JSON.stringify(d.highlights),
+                JSON.stringify(d.specs),
+                req.params.id,
+            ]
+        );
+        if (!rowCount) {
             return res.status(404).json({ success: false, error: 'Product not found' });
         }
-
-        res.json({ success: true, data: flattenProduct(data) });
+        const data = await getProductById(req.params.id);
+        res.json({ success: true, data });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
 });
 
-// DELETE /api/products/:id — Delete product
 router.delete('/:id', async (req, res) => {
     try {
-        const { error } = await supabase
-            .from('products')
-            .delete()
-            .eq('id', req.params.id);
-
-        if (error) throw error;
+        const { rowCount } = await pool.query('DELETE FROM products WHERE id = $1', [req.params.id]);
+        if (!rowCount) {
+            return res.status(404).json({ success: false, error: 'Product not found' });
+        }
         res.json({ success: true, message: 'Product deleted' });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
 });
 
-// Helper: sanitize and extract known fields
 function sanitizeProductData(body) {
     const {
         slug,
@@ -159,7 +194,7 @@ function sanitizeProductData(body) {
     return {
         slug,
         name,
-        brand_id: brand_id ? parseInt(brand_id) : null,
+        brand_id: brand_id ? parseInt(brand_id, 10) : null,
         age_range,
         weight,
         price,
@@ -167,7 +202,7 @@ function sanitizeProductData(body) {
         badge_type: badge_type || null,
         colors: colors || [],
         images: images || [],
-        category_id: category_id ? parseInt(category_id) : null,
+        category_id: category_id ? parseInt(category_id, 10) : null,
         features: features || [],
         description: description || '',
         highlights: highlights || [],

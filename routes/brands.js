@@ -1,41 +1,31 @@
 import { Router } from 'express';
-import supabase from '../db/supabase.js';
+import { pool } from '../db/pool.js';
 
 const router = Router();
 
-// GET /api/brands — list all brands
 router.get('/', async (req, res) => {
     try {
-        const { data, error } = await supabase
-            .from('brands')
-            .select('*')
-            .order('sort_order', { ascending: true });
-
-        if (error) throw error;
-        res.json({ success: true, data });
+        const { rows } = await pool.query(
+            'SELECT * FROM brands ORDER BY sort_order ASC'
+        );
+        res.json({ success: true, data: rows });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
 });
 
-// GET /api/brands/:id
 router.get('/:id', async (req, res) => {
     try {
-        const { data, error } = await supabase
-            .from('brands')
-            .select('*')
-            .eq('id', req.params.id)
-            .single();
-
-        if (error) throw error;
-        if (!data) return res.status(404).json({ success: false, error: 'Không tìm thấy thương hiệu' });
-        res.json({ success: true, data });
+        const { rows } = await pool.query('SELECT * FROM brands WHERE id = $1', [req.params.id]);
+        if (!rows[0]) {
+            return res.status(404).json({ success: false, error: 'Không tìm thấy thương hiệu' });
+        }
+        res.json({ success: true, data: rows[0] });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
 });
 
-// POST /api/brands
 router.post('/', async (req, res) => {
     try {
         const { name, slug, description, logo_url, is_active, sort_order } = req.body;
@@ -43,55 +33,63 @@ router.post('/', async (req, res) => {
             return res.status(400).json({ success: false, error: 'Tên và slug là bắt buộc' });
         }
 
-        const { data, error } = await supabase
-            .from('brands')
-            .insert({ name, slug, description: description || '', logo_url: logo_url || '', is_active: is_active !== false, sort_order: sort_order || 0 })
-            .select()
-            .single();
-
-        if (error) throw error;
-        res.status(201).json({ success: true, data });
+        const { rows } = await pool.query(
+            `INSERT INTO brands (name, slug, description, logo_url, is_active, sort_order)
+             VALUES ($1,$2,$3,$4,$5,$6)
+             RETURNING *`,
+            [
+                name,
+                slug,
+                description || '',
+                logo_url || '',
+                is_active !== false,
+                sort_order || 0,
+            ]
+        );
+        res.status(201).json({ success: true, data: rows[0] });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
 });
 
-// PUT /api/brands/:id
 router.put('/:id', async (req, res) => {
     try {
         const { name, slug, description, logo_url, is_active, sort_order } = req.body;
-        const updates = {};
-        if (name !== undefined) updates.name = name;
-        if (slug !== undefined) updates.slug = slug;
-        if (description !== undefined) updates.description = description;
-        if (logo_url !== undefined) updates.logo_url = logo_url;
-        if (is_active !== undefined) updates.is_active = is_active;
-        if (sort_order !== undefined) updates.sort_order = sort_order;
+        const fields = [];
+        const vals = [];
+        let i = 1;
 
-        const { data, error } = await supabase
-            .from('brands')
-            .update(updates)
-            .eq('id', req.params.id)
-            .select()
-            .single();
+        if (name !== undefined) { fields.push(`name = $${i++}`); vals.push(name); }
+        if (slug !== undefined) { fields.push(`slug = $${i++}`); vals.push(slug); }
+        if (description !== undefined) { fields.push(`description = $${i++}`); vals.push(description); }
+        if (logo_url !== undefined) { fields.push(`logo_url = $${i++}`); vals.push(logo_url); }
+        if (is_active !== undefined) { fields.push(`is_active = $${i++}`); vals.push(is_active); }
+        if (sort_order !== undefined) { fields.push(`sort_order = $${i++}`); vals.push(sort_order); }
 
-        if (error) throw error;
-        if (!data) return res.status(404).json({ success: false, error: 'Không tìm thấy thương hiệu' });
-        res.json({ success: true, data });
+        if (!fields.length) {
+            return res.status(400).json({ success: false, error: 'Không có dữ liệu cập nhật' });
+        }
+
+        vals.push(req.params.id);
+        const { rows, rowCount } = await pool.query(
+            `UPDATE brands SET ${fields.join(', ')} WHERE id = $${i} RETURNING *`,
+            vals
+        );
+        if (!rowCount) {
+            return res.status(404).json({ success: false, error: 'Không tìm thấy thương hiệu' });
+        }
+        res.json({ success: true, data: rows[0] });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
 });
 
-// DELETE /api/brands/:id
 router.delete('/:id', async (req, res) => {
     try {
-        const { error } = await supabase
-            .from('brands')
-            .delete()
-            .eq('id', req.params.id);
-
-        if (error) throw error;
+        const { rowCount } = await pool.query('DELETE FROM brands WHERE id = $1', [req.params.id]);
+        if (!rowCount) {
+            return res.status(404).json({ success: false, error: 'Không tìm thấy thương hiệu' });
+        }
         res.json({ success: true, message: 'Đã xóa thương hiệu' });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });

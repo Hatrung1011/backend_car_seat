@@ -1,9 +1,10 @@
 import { Router } from 'express';
-import supabase from '../db/supabase.js';
+import bcrypt from 'bcrypt';
+import { pool } from '../db/pool.js';
+import { signToken, verifyToken } from '../lib/jwt.js';
 
 const router = Router();
 
-// POST /api/auth/login — Authenticate via Supabase Auth
 router.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -15,24 +16,31 @@ router.post('/login', async (req, res) => {
             });
         }
 
-        const { data, error } = await supabase.auth.signInWithPassword({
-            email: email.trim(),
-            password: password,
-        });
+        const { rows } = await pool.query(
+            'SELECT id, email, password_hash FROM admin_users WHERE email = $1',
+            [email.trim().toLowerCase()]
+        );
 
-        if (error) {
+        const user = rows[0];
+        if (!user || !(await bcrypt.compare(password, user.password_hash))) {
             return res.status(401).json({
                 success: false,
                 error: 'Email hoặc mật khẩu không đúng',
             });
         }
 
+        const token = signToken({
+            sub: String(user.id),
+            email: user.email,
+            role: 'admin',
+        });
+
         res.json({
             success: true,
             data: {
-                token: data.session.access_token,
+                token,
                 user: {
-                    email: data.user.email,
+                    email: user.email,
                     role: 'admin',
                 },
             },
@@ -42,7 +50,6 @@ router.post('/login', async (req, res) => {
     }
 });
 
-// GET /api/auth/check — verify Supabase token is still valid
 router.get('/check', async (req, res) => {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -51,16 +58,11 @@ router.get('/check', async (req, res) => {
 
     try {
         const token = authHeader.split(' ')[1];
-        const { data: { user }, error } = await supabase.auth.getUser(token);
-
-        if (error || !user) {
-            return res.json({ success: false, authenticated: false });
-        }
-
+        const decoded = verifyToken(token);
         res.json({
             success: true,
             authenticated: true,
-            user: { email: user.email, role: 'admin' },
+            user: { email: decoded.email, role: 'admin' },
         });
     } catch {
         res.json({ success: false, authenticated: false });

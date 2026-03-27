@@ -9,6 +9,10 @@ RUN npm ci --omit=dev
 
 COPY . .
 
+RUN mkdir -p /app/data/uploads/products
+
+VOLUME ["/app/data/uploads"]
+
 EXPOSE 3001
 
 CMD ["node", "server.js"]

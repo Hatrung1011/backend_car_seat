@@ -1,4 +1,9 @@
-import supabase from './supabase.js';
+import dotenv from 'dotenv';
+import { pool } from './pool.js';
+import { migrate } from './migrate.js';
+import { ensureAdminAndSeed } from './ensureAdmin.js';
+
+dotenv.config();
 
 const allProducts = [
     {
@@ -433,33 +438,53 @@ const allProducts = [
 ];
 
 async function seed() {
-    console.log('🌱 Seeding products...');
+    await migrate();
+    await ensureAdminAndSeed();
 
-    // Clear existing products
-    const { error: deleteError } = await supabase
-        .from('products')
-        .delete()
-        .neq('id', 0); // delete all
+    console.log('Seeding products...');
 
-    if (deleteError) {
-        console.error('❌ Error clearing products:', deleteError.message);
-        process.exit(1);
+    const { rows: brands } = await pool.query('SELECT id, name FROM brands');
+    const brandByName = Object.fromEntries(brands.map((b) => [b.name, b.id]));
+
+    const { rows: cats } = await pool.query('SELECT id, slug FROM categories');
+    const catBySlug = Object.fromEntries(cats.map((c) => [c.slug, c.id]));
+
+    await pool.query('DELETE FROM products');
+
+    for (const p of allProducts) {
+        const brand_id = brandByName[p.brand] ?? null;
+        const category_id = catBySlug[p.category] ?? null;
+
+        await pool.query(
+            `INSERT INTO products (
+                slug, name, brand_id, category_id, age_range, weight, price,
+                badge, badge_type, colors, images, features, description, highlights, specs
+            ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11::jsonb,$12::jsonb,$13,$14::jsonb,$15::jsonb)`,
+            [
+                p.slug,
+                p.name,
+                brand_id,
+                category_id,
+                p.age_range,
+                p.weight,
+                p.price,
+                p.badge,
+                p.badge_type,
+                JSON.stringify(p.colors),
+                JSON.stringify(p.images),
+                JSON.stringify(p.features),
+                p.description,
+                JSON.stringify(p.highlights),
+                JSON.stringify(p.specs),
+            ]
+        );
     }
 
-    // Insert all products
-    const { data, error } = await supabase
-        .from('products')
-        .insert(allProducts)
-        .select();
-
-    if (error) {
-        console.error('❌ Error seeding products:', error.message);
-        process.exit(1);
-    }
-
-    console.log(`✅ Successfully seeded ${data.length} products!`);
-    data.forEach((p) => console.log(`   - ${p.name} (${p.slug})`));
+    console.log(`Successfully seeded ${allProducts.length} products!`);
     process.exit(0);
 }
 
-seed();
+seed().catch((err) => {
+    console.error(err);
+    process.exit(1);
+});
