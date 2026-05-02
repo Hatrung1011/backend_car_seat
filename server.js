@@ -61,18 +61,26 @@ app.get('*', (req, res) => {
     }
 });
 
-async function start() {
-    await migrate();
-    await ensureAdminAndSeed();
+function start() {
     app.listen(PORT, '0.0.0.0', () => {
         console.log(`Server running at http://0.0.0.0:${PORT}`);
         console.log(`Uploads: ${UPLOAD_ROOT}`);
     });
+
+    // Migrate + seed sau khi đã listen — để /api/health và cổng 3001 luôn có khi container boot
+    // (tránh Connection refused / healthcheck fail trong lúc chạy schema.sql lần đầu).
+    (async () => {
+        try {
+            await migrate();
+            await ensureAdminAndSeed();
+            console.log('DB migrate + seed OK');
+        } catch (err) {
+            console.error(err);
+            process.exit(1);
+        }
+    })();
 }
 
-start().catch((err) => {
-    console.error(err);
-    process.exit(1);
-});
+start();
 
 export default app;
