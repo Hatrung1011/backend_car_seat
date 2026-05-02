@@ -51,6 +51,9 @@ app.use('/api/products', productRoutes);
 app.use('/api/brands', brandRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/upload', uploadRoutes);
+app.get('/api/health', async (req, res) => {
+    res.json({ success: true, status: 'ok' });
+});
 
 app.get('*', (req, res) => {
     if (!req.path.startsWith('/api')) {

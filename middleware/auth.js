@@ -1,7 +1,7 @@
 import { verifyToken } from '../lib/jwt.js';
 
 export async function authMiddleware(req, res, next) {
-    if (req.path === '/api/auth/login' || req.path === '/api/auth/check') {
+    if (req.path === '/api/auth/login' || req.path === '/api/auth/check' || req.path === '/api/health') {
         return next();
     }
 

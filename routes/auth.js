@@ -59,10 +59,18 @@ router.get('/check', async (req, res) => {
     try {
         const token = authHeader.split(' ')[1];
         const decoded = verifyToken(token);
+        const { rows } = await pool.query(
+            'SELECT id, email FROM admin_users WHERE id = $1',
+            [Number(decoded.sub)]
+        );
+        const user = rows[0];
+        if (!user) {
+            return res.json({ success: false, authenticated: false });
+        }
         res.json({
             success: true,
             authenticated: true,
-            user: { email: decoded.email, role: 'admin' },
+            user: { email: user.email, role: 'admin' },
         });
     } catch {
         res.json({ success: false, authenticated: false });
