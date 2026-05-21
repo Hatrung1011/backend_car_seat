@@ -43,6 +43,11 @@ async function getProductById(id) {
     return rows[0] ? mapProduct(rows[0]) : null;
 }
 
+async function getProductBySlug(slug) {
+    const { rows } = await pool.query(`${SELECT_JOIN} WHERE p.slug = $1`, [slug]);
+    return rows[0] ? mapProduct(rows[0]) : null;
+}
+
 router.get('/', async (req, res) => {
     try {
         const { category, search } = req.query;
@@ -71,6 +76,18 @@ router.get('/', async (req, res) => {
         const sql = `${SELECT_JOIN} WHERE ${where.join(' AND ')} ORDER BY p.id ASC`;
         const { rows } = await pool.query(sql, params);
         res.json({ success: true, data: rows.map(mapProduct) });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+router.get('/by-slug/:slug', async (req, res) => {
+    try {
+        const data = await getProductBySlug(req.params.slug);
+        if (!data) {
+            return res.status(404).json({ success: false, error: 'Product not found' });
+        }
+        res.json({ success: true, data });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
